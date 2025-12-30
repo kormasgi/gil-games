@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tetris</title>
+    <style>
+        body {
+            background: #111;
+            color: black;
+            text-align: center;
+            font-family: Arial;
+        }
+
+        canvas {
+            background: black;
+            border: 3px solid white;
+        }
+
+        .logo-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+        }
+        .logo {
+            width: 32px;
+            cursor: pointer;
+        }
+
+
+        #message, #score {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+<a href="gil-games.html" class="logo-link">
+    <img src="logo.png" alt="Gil Games Logo" class="logo">
+    <link rel="stylesheet" href="style.css">
+</a>
+
+<h1>Tetris</h1>
+<p id="message">Press ENTER to start</p>
+<p id="score">Score: 0 | High Score: 0</p>
+
+<canvas id="tetris" width="300" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("tetris");
+const ctx = canvas.getContext("2d");
+
+const COLS = 10;
+const ROWS = 20;
+const BLOCK = 30;
+
+const COLORS = [
+    null, "cyan", "yellow", "green",
+    "red", "purple", "orange", "blue"
+];
+
+const SHAPES = [
+    [[1,1,1,1]],
+    [[1,1],[1,1]],
+    [[0,1,1],[1,1,0]],
+    [[1,1,0],[0,1,1]],
+    [[1,1,1],[0,1,0]],
+    [[1,1,1],[1,0,0]],
+    [[1,1,1],[0,0,1]]
+];
+
+let board, piece;
+let score = 0;
+let highScore = localStorage.getItem("tetrisHighScore") || 0;
+let running = false;
+
+updateScore();
+
+function updateScore() {
+    document.getElementById("score").textContent =
+        `Score: ${score} | High Score: ${highScore}`;
+}
+
+function resetGame() {
+    board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    piece = newPiece();
+    score = 0;
+    updateScore();
+    document.getElementById("message").textContent =
+        "Arrow keys to play; up arrow rotates";
+}
+
+function newPiece() {
+    const id = Math.floor(Math.random() * SHAPES.length);
+    return {
+        shape: SHAPES[id],
+        color: id + 1,
+        x: 3,
+        y: 0
+    };
+}
+
+function drawBlock(x, y, color) {
+    ctx.fillStyle = COLORS[color];
+    ctx.fillRect(x * BLOCK, y * BLOCK, BLOCK, BLOCK);
+    ctx.strokeStyle = "black";
+    ctx.strokeRect(x * BLOCK, y * BLOCK, BLOCK, BLOCK);
+}
+
+function drawBoard() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            if (board[y][x]) drawBlock(x, y, board[y][x]);
+        }
+    }
+}
+
+function drawPiece() {
+    piece.shape.forEach((row,y) => {
+        row.forEach((val,x) => {
+            if (val) drawBlock(piece.x + x, piece.y + y, piece.color);
+        });
+    });
+}
+
+function collide(dx, dy, shape = piece.shape) {
+    for (let y = 0; y < shape.length; y++) {
+        for (let x = 0; x < shape[y].length; x++) {
+            if (shape[y][x]) {
+                let nx = piece.x + x + dx;
+                let ny = piece.y + y + dy;
+                if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+                if (ny >= 0 && board[ny][nx]) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function merge() {
+    piece.shape.forEach((row,y) => {
+        row.forEach((val,x) => {
+            if (val) board[piece.y + y][piece.x + x] = piece.color;
+        });
+    });
+}
+
+function clearLines() {
+    let cleared = 0;
+    board = board.filter(row => {
+        if (row.every(v => v !== 0)) {
+            cleared++;
+            return false;
+        }
+        return true;
+    });
+
+    while (board.length < ROWS) {
+        board.unshift(Array(COLS).fill(0));
+    }
+
+    if (cleared) {
+        score += cleared * 100;
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("tetrisHighScore", highScore);
+        }
+        updateScore();
+    }
+}
+
+function rotate() {
+    const rotated = piece.shape[0].map((_,i) =>
+        piece.shape.map(row => row[i]).reverse()
+    );
+    if (!collide(0,0,rotated)) piece.shape = rotated;
+}
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !running) {
+        resetGame();
+        running = true;
+        return;
+    }
+
+    if (!running) return;
+
+    if (e.key === "ArrowLeft" && !collide(-1,0)) piece.x--;
+    if (e.key === "ArrowRight" && !collide(1,0)) piece.x++;
+    if (e.key === "ArrowDown" && !collide(0,1)) piece.y++;
+    if (e.key === "ArrowUp") rotate();
+});
+
+function update() {
+    if (!collide(0,1)) {
+        piece.y++;
+    } else {
+        merge();
+        clearLines();
+        piece = newPiece();
+
+        if (collide(0,0)) {
+            running = false;
+            document.getElementById("message").textContent =
+                "Game Over — Press ENTER to restart";
+        }
+    }
+}
+
+function loop() {
+    drawBoard();
+    if (running) drawPiece();
+}
+
+setInterval(() => {
+    if (running) update();
+    loop();
+}, 500);
+</script>
+
+</body>
+</html>
