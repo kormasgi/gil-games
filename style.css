@@ -21,7 +21,22 @@ header img {
 header h1 {
     position: relative;
     top: 40px;
+}
 
+img:not(header img) {
+    position: relative;
+    left: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    transition: transform 0.2s;
+    margin: 20px;
+    position: relative;
+    left: 20px;
+}
+
+img:not(header img):hover {
+    transform: scale(1.05);
+    transition: transform 0.2s;
 }
 
 .logo-link {
